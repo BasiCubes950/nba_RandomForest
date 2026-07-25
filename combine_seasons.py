@@ -91,8 +91,8 @@ def combine_csvs(files):
 def main():
     parser = argparse.ArgumentParser(description="Combine Seasons CSV files into one CSV")
     parser.add_argument("-i", "--input-dir", default="Seasons", help="Directory containing season CSV files")
-    parser.add_argument("-o", "--output", default="all_seasons.csv", help="Output CSV path")
-    parser.add_argument("-m", "--max-season", default=None,
+    parser.add_argument("-o", "--output", default="train.csv", help="Output CSV path")
+    parser.add_argument("-m", "--max-season", default="21-22",
                         help="Maximum season to include. Accepts formats like 1996, 1996-97, 96-97.")
     args = parser.parse_args()
 
@@ -129,6 +129,11 @@ def main():
             print(f"Warning: could not read {f}: {e}")
             continue
         df["_source_file"] = os.path.basename(f)
+        # if the dataframe doesn't have a `season` column, infer it from the filename
+        if "season" not in df.columns:
+            base = os.path.splitext(os.path.basename(f))[0]
+            df["season"] = base
+
         # apply season filter
         df = filter_df_by_max_year(df, max_year)
         if df.empty:
