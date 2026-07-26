@@ -45,23 +45,25 @@ def season_start_year(season_str):
     return None
 
 
-def filter_df_by_max_year(df, max_year):
-    """Filter rows in df where season starting year <= max_year.
+def filter_df_by_year_range(df, min_year, max_year):
+    """Filter rows in df by a season starting year range.
 
     Uses the `season` column if present; otherwise attempts to keep the whole df.
     """
-    if max_year is None:
+    if min_year is None and max_year is None:
         return df
 
     if "season" in df.columns:
-        # parse each season value to start year
         start_years = df["season"].apply(season_start_year)
-        mask = start_years.notnull() & (start_years <= max_year)
+        mask = start_years.notnull()
+        if min_year is not None:
+            mask = mask & (start_years >= min_year)
+        if max_year is not None:
+            mask = mask & (start_years <= max_year)
         # keep rows without a parseable season conservatively
         mask = mask | start_years.isnull()
         return df[mask]
 
-    # no season column — cannot reliably filter rows, keep df unchanged
     return df
 
 def combine_csvs(files):
@@ -91,8 +93,10 @@ def combine_csvs(files):
 def main():
     parser = argparse.ArgumentParser(description="Combine Seasons CSV files into one CSV")
     parser.add_argument("-i", "--input-dir", default="Seasons", help="Directory containing season CSV files")
-    parser.add_argument("-o", "--output", default="train.csv", help="Output CSV path")
-    parser.add_argument("-m", "--max-season", default="21-22",
+    parser.add_argument("-o", "--output", default="test.csv", help="Output CSV path")
+    parser.add_argument("--min-season", default="20-21",
+                        help="Minimum season to include. Accepts formats like 1996, 1996-97, 96-97.")
+    parser.add_argument("--max-season", default=None,
                         help="Maximum season to include. Accepts formats like 1996, 1996-97, 96-97.")
     args = parser.parse_args()
 
@@ -104,15 +108,30 @@ def main():
     if not files:
         print(f"No CSV files found in {args.input_dir}")
         sys.exit(1)
-    # interpret max season
+    # interpret season bounds
+    min_year = None
     max_year = None
+    if args.min_season:
+        min_year = season_start_year(args.min_season)
+        if min_year is None:
+            print(f"Could not parse --min-season value: {args.min_season}")
+            sys.exit(1)
     if args.max_season:
         max_year = season_start_year(args.max_season)
         if max_year is None:
             print(f"Could not parse --max-season value: {args.max_season}")
             sys.exit(1)
+    if min_year is not None and max_year is not None and min_year > max_year:
+        print("--min-season must be less than or equal to --max-season")
+        sys.exit(1)
 
-    print(f"Found {len(files)} files. Combining up to season start year: {max_year if max_year else 'ALL'}...")
+    range_text = "ALL"
+    if min_year is not None or max_year is not None:
+        min_text = args.min_season if args.min_season else "start"
+        max_text = args.max_season if args.max_season else "end"
+        range_text = f"{min_text} through {max_text}"
+
+    print(f"Found {len(files)} files. Combining seasons: {range_text}...")
 
     # combine while filtering per-file to avoid loading extra rows
     try:
@@ -135,7 +154,7 @@ def main():
             df["season"] = base
 
         # apply season filter
-        df = filter_df_by_max_year(df, max_year)
+        df = filter_df_by_year_range(df, min_year, max_year)
         if df.empty:
             continue
         frames.append(df)
