@@ -93,10 +93,10 @@ def combine_csvs(files):
 def main():
     parser = argparse.ArgumentParser(description="Combine Seasons CSV files into one CSV")
     parser.add_argument("-i", "--input-dir", default="Seasons", help="Directory containing season CSV files")
-    parser.add_argument("-o", "--output", default="test.csv", help="Output CSV path")
-    parser.add_argument("--min-season", default="20-21",
+    parser.add_argument("-o", "--output", default="train.csv", help="Output CSV path")
+    parser.add_argument("--min-season", default=None,
                         help="Minimum season to include. Accepts formats like 1996, 1996-97, 96-97.")
-    parser.add_argument("--max-season", default=None,
+    parser.add_argument("--max-season", default="14-15",
                         help="Maximum season to include. Accepts formats like 1996, 1996-97, 96-97.")
     args = parser.parse_args()
 
